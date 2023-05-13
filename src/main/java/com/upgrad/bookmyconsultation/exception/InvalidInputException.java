@@ -7,9 +7,7 @@ import java.util.List;
 
 @Data
 @AllArgsConstructor
-public class InvalidInputException extends Exception {
-    public InvalidInputException(String msg) {
-        super(msg);
-    }
+public class InvalidInputException extends Exception{
+    private List<String> attributeNames;
 
 }

@@ -7,8 +7,6 @@
  */
 package com.upgrad.bookmyconsultation.exception;
 
-import org.springframework.web.bind.annotation.ExceptionHandler;
-
 /**
  * User defined exception for unauthenticated access.
  */

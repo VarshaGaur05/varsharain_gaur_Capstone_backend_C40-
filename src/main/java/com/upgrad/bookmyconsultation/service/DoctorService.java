@@ -15,87 +15,94 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import springfox.documentation.annotations.Cacheable;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
+
+import static java.util.Objects.isNull;
 
 @Log4j2
 @Service
 public class DoctorService {
-    @Autowired
-    private AppointmentRepository appointmentRepository;
-    @Autowired
-    private DoctorRepository doctorRepository;
-    @Autowired
-    private AddressRepository addressRepository;
+	@Autowired
+	private AppointmentRepository appointmentRepository;
+	@Autowired
+	private DoctorRepository doctorRepository;
+	@Autowired
+	private AddressRepository addressRepository;
+
+	
+	//create a method register with return type and parameter of typeDoctor
+	//declare InvalidInputException for the method
+		//validate the doctor details
+		//if address is null throw InvalidInputException
+		//set UUID for doctor using UUID.randomUUID.
+		//if speciality is null 
+			//set speciality to Speciality.GENERAL_PHYSICIAN
+		//Create an Address object, initialise it with address details from the doctor object
+		//Save the address object to the database. Store the response.
+		//Set the address in the doctor object with the response
+		//save the doctor object to the database
+		//return the doctor object
+	public Doctor register(Doctor doctor) throws InvalidInputException{
+
+		ValidationUtils.validate(doctor);
+		if(doctor.getAddress() == null) throw new InvalidInputException(Arrays.asList("Address"));
+		doctor.setId(UUID.randomUUID().toString());
+
+		if(doctor.getSpeciality() == null){
+			doctor.setSpeciality(Speciality.GENERAL_PHYSICIAN);
+		}
+
+		Address address = doctor.getAddress();
+		address.setId(doctor.getId());
+
+		doctor.setAddress(addressRepository.save(address));
+		doctorRepository.save(doctor);
+		return doctor;
 
 
-    //create a method register with return type and parameter of typeDoctor
-    //declare InvalidInputException for the method
-    //validate the doctor details
-    //if address is null throw InvalidInputException
-    //set UUID for doctor using UUID.randomUUID.
-    //if speciality is null
-    //set speciality to Speciality.GENERAL_PHYSICIAN
-    //Create an Address object, initialise it with address details from the doctor object
-    //Save the address object to the database. Store the response.
-    //Set the address in the doctor object with the response
-    //save the doctor object to the database
-    //return the doctor object
-    public Doctor register(Doctor doctor) throws InvalidInputException {
-        String id = UUID.randomUUID().toString();
-        doctor.setId(id);
-        ValidationUtils.validate(doctor);
-        if (Objects.isNull(doctor.getSpeciality())) {
-            doctor.setSpeciality(Speciality.GENERAL_PHYSICIAN);
-        }
-        Address address = doctor.getAddress();
-        address.setId(id);
-        address = (Address) addressRepository.save(address);
-        doctor.setAddress(address);
-        return doctorRepository.save(doctor);
-    }
+	}
+	
+	//create a method name getDoctor that returns object of type Doctor and has a String paramter called id
+		//find the doctor by id
+		//if doctor is found return the doctor
+		//else throw ResourceUnAvailableException
+	public Doctor getDoctor(String id){
+		Optional<Doctor> doctor = doctorRepository.findById(id);
+		return Optional.ofNullable(doctor).orElseThrow(ResourceUnAvailableException::new).get();
+	}
+	
 
-    //create a method name getDoctor that returns object of type Doctor and has a String paramter called id
-    //find the doctor by id
-    //if doctor is found return the doctor
-    //else throw ResourceUnAvailableException
-    public Doctor getDoctor(String id) {
-        return doctorRepository.findById(id).orElseThrow(() -> new ResourceUnAvailableException("Doctor not found with id " + id));
-    }
+	public List<Doctor> getAllDoctorsWithFilters(String speciality) {
 
+		if (speciality != null && !speciality.isEmpty()) {
+			return doctorRepository.findBySpecialityOrderByRatingDesc(Speciality.valueOf(speciality));
+		}
+		return getActiveDoctorsSortedByRating();
+	}
 
-    public List<Doctor> getAllDoctorsWithFilters(String speciality) {
+	@Cacheable(value = "doctorListByRating")
+	private List<Doctor> getActiveDoctorsSortedByRating() {
+		log.info("Fetching doctor list from the database");
+		return doctorRepository.findAllByOrderByRatingDesc()
+				.stream()
+				.limit(20)
+				.collect(Collectors.toList());
+	}
 
-        if (speciality != null && !speciality.isEmpty()) {
-            return doctorRepository.findBySpecialityOrderByRatingDesc(Speciality.valueOf(speciality));
-        }
-        return getActiveDoctorsSortedByRating();
-    }
+	public TimeSlot getTimeSlots(String doctorId, String date) {
 
-    @Cacheable(value = "doctorListByRating")
-    private List<Doctor> getActiveDoctorsSortedByRating() {
-        log.info("Fetching doctor list from the database");
-        return doctorRepository.findAllByOrderByRatingDesc()
-                .stream()
-                .limit(20)
-                .collect(Collectors.toList());
-    }
+		TimeSlot timeSlot = new TimeSlot(doctorId, date);
+		timeSlot.setTimeSlot(timeSlot.getTimeSlot()
+				.stream()
+				.filter(slot -> {
+					return appointmentRepository
+							.findByDoctorIdAndTimeSlotAndAppointmentDate(timeSlot.getDoctorId(), slot, timeSlot.getAvailableDate()) == null;
 
-    public TimeSlot getTimeSlots(String doctorId, String date) {
+				})
+				.collect(Collectors.toList()));
 
-        TimeSlot timeSlot = new TimeSlot(doctorId, date);
-        timeSlot.setTimeSlot(timeSlot.getTimeSlot()
-                .stream()
-                .filter(slot -> {
-                    return appointmentRepository
-                            .findByDoctorIdAndTimeSlotAndAppointmentDate(timeSlot.getDoctorId(), slot, timeSlot.getAvailableDate()) == null;
+		return timeSlot;
 
-                })
-                .collect(Collectors.toList()));
-
-        return timeSlot;
-
-    }
+	}
 }

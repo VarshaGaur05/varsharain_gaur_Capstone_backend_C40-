@@ -14,63 +14,53 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 
+import static java.util.Objects.isNull;
+
 @Service
 @RequiredArgsConstructor
 public class AppointmentService {
 
-
-    //mark it autowired
-    //create an instance of AppointmentRepository called appointmentRepository
+	
+	
+	//mark it autowired
+	//create an instance of AppointmentRepository called appointmentRepository
     @Autowired
-    AppointmentRepository appointmentRepository;
-    @Autowired
-    private UserRepository userRepository;
+    private AppointmentRepository appointmentRepository;
 
-    //create a method name appointment with the return type of String and parameter of type Appointment
-    //declare exceptions 'SlotUnavailableException' and 'InvalidInputException'
-    //validate the appointment details using the validate method from ValidationUtils class
-    //find if an appointment exists with the same doctor for the same date and time
-    //if the appointment exists throw the SlotUnavailableException
-    //save the appointment details to the database
-    //return the appointment id
-
-    public String appointment(Appointment appointment) throws SlotUnavailableException, InvalidInputException {
-        Appointment fetchedAppointment = null;
-        try {
-            ValidationUtils.validate(appointment);
-            if (appointmentRepository.findByDoctorIdAndTimeSlotAndAppointmentDate(appointment.getDoctorId(),appointment.getTimeSlot(),appointment.getAppointmentDate())== null) {
-                fetchedAppointment = appointmentRepository.save(appointment);
-            } else {
-                throw new SlotUnavailableException("Slot is already booked,Please choose another slot.");
-            }
-        } catch (InvalidInputException ex) {
-            throw new InvalidInputException("Please enter correct details.");
-        }
-        return fetchedAppointment.getAppointmentId();
-    }
+	@Autowired
+	private UserRepository userRepository;
 
 
-    //create a method getAppointment of type Appointment with a parameter name appointmentId of type String
-    //Use the appointmentid to get the appointment details
-    //if the appointment exists return the appointment
-    //else throw ResourceUnAvailableException
-    //tip: use Optional.ofNullable(). Use orElseThrow() method when Optional.ofNullable() throws NULL
-    public Appointment getAppointment(String appointmentId) {
-        /**   Appointment fetchedAppointment=null;
-         Optional<Appointment> appointment = appointmentRepository.findById(appointmentId);
-         if(appointment.isPresent()){
-         fetchedAppointment = appointment.get();
-         }else{
-         throw new ResourceUnAvailableException("Appointment not found.");
-         }
-         return fetchedAppointment;
-         **/
-        Appointment fetchedAppointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new ResourceUnAvailableException("Appointment not found."));
-        return fetchedAppointment;
-    }
+	//create a method name appointment with the return type of String and parameter of type Appointment
+	//declare exceptions 'SlotUnavailableException' and 'InvalidInputException'
+		//validate the appointment details using the validate method from ValidationUtils class
+		//find if an appointment exists with the same doctor for the same date and time
+		//if the appointment exists throw the SlotUnavailableException
+		//save the appointment details to the database
+		//return the appointment id
+	public String appointment(Appointment appointment) throws SlotUnavailableException, InvalidInputException{
+		ValidationUtils.validate(appointment);
+		Appointment returnAppointment = appointmentRepository.findByDoctorIdAndTimeSlotAndAppointmentDate(
+				appointment.getDoctorId(),
+				appointment.getTimeSlot(),
+				appointment.getAppointmentDate());
+		if (!isNull(returnAppointment)) throw new SlotUnavailableException();
+		return appointmentRepository.save(appointment).getAppointmentId();
+	}
+	
 
-    public List<Appointment> getAppointmentsForUser(String userId) {
-        return appointmentRepository.findByUserId(userId);
-    }
+
+	//create a method getAppointment of type Appointment with a parameter name appointmentId of type String
+		//Use the appointmentid to get the appointment details
+		//if the appointment exists return the appointment
+		//else throw ResourceUnAvailableException
+		//tip: use Optional.ofNullable(). Use orElseThrow() method when Optional.ofNullable() throws NULL
+	public Appointment getAppointment(String appointmentId) throws ResourceUnAvailableException {
+		Optional<Appointment> appointment = appointmentRepository.findById(appointmentId);
+		return Optional.ofNullable(appointment).orElseThrow(ResourceUnAvailableException::new).get();
+	}
+
+	public List<Appointment> getAppointmentsForUser(String userId) {
+		return appointmentRepository.findByUserId(userId);
+	}
 }

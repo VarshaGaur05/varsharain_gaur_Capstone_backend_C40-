@@ -9,10 +9,10 @@ import java.util.List;
 @Repository
 public interface UserRepository extends CrudRepository<User, String> {
 
-    @Override
-    List<User> findAll();
+	@Override
+	List<User> findAll();
 
-    //specify a method that returns User by finding it by email id
-    public User findByEmailId(String emailId);
+	//specify a method that returns User by finding it by email id
+	public User findByEmailId(String emailId);
 
 }
